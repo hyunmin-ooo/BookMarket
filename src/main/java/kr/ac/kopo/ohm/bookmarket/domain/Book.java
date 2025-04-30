@@ -1,14 +1,16 @@
 package kr.ac.kopo.ohm.bookmarket.domain;
 
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
 
-@Getter
-@Setter
-@NoArgsConstructor
+@Data //밑에 어노테이션들 대신에 이거 하나로 가능!
+//@Getter
+//@Setter
+//@NoArgsConstructor
 public class Book {
     private String bookId; //도서번호
     private String name; //도서명
