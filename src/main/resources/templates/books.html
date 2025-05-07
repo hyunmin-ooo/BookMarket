@@ -26,13 +26,14 @@
 
         <div class="p-5 mb-4 bg-body-tertiary rounded-3">
             <div class="container-fluid py-5">
-                <h1 class="display-5 fw-bold">Welcome to My BookMarket</h1>
-                <p class="col-md-8 fs-4">BookMarket</p>
+                <h1 class="display-5 fw-bold">서점에 오신것을 환영합니다.</h1>
+                <p class="col-md-8 fs-4">서점</p>
             </div>
         </div>
 
         <div class="row align-items-md-stretch text-center">
             <div class="col-md-4" th:each="book : ${bookList}">
+                <img th:src="'/BookMarket/images/'+${book.getFileName()}" style="width:60%">
                 <h3 th:text="${book.getName()}"></h3>
                 <p th:text="${book.getAuthor()}"></p>
                 <p th:text="${book.getPublisher()} + ' | ' + ${book.getReleaseDate()}"></p>
