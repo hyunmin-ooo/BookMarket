@@ -1,9 +1,12 @@
 package kr.ac.kopo.ohm.bookmarket.controller;
 
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import kr.ac.kopo.ohm.bookmarket.domain.Book;
+import kr.ac.kopo.ohm.bookmarket.exception.BookIdException;
+import kr.ac.kopo.ohm.bookmarket.exception.CategoryException;
 import kr.ac.kopo.ohm.bookmarket.service.BookService;
 import kr.ac.kopo.ohm.bookmarket.validator.BookValidator;
 import kr.ac.kopo.ohm.bookmarket.validator.UnitsInStockValidator;
@@ -13,7 +16,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.validation.BindingResult;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,9 +34,11 @@ import java.util.Set;
 public class BookController {
     @Autowired
     private BookService bookService;
+
     @Value("${file.uploadDir}")
     String fileDir;
-//    @Autowired
+
+    //    @Autowired
 //    private UnitsInStockValidator unitsInStockValidator;
     @Autowired
     private BookValidator bookValidator;
@@ -42,12 +46,9 @@ public class BookController {
     @GetMapping
     public String requestBookList(Model model) {
         List<Book> bookList = bookService.getAllBookList();
-        System.out.println("bookList:" + bookList);
         model.addAttribute("bookList", bookList);
         return "books";
     }
-
-
 
     @GetMapping("/all")
     public ModelAndView requestAllBookList() {
@@ -59,39 +60,44 @@ public class BookController {
     }
 
     @GetMapping("/book")
-    public String requestBookbyId(@RequestParam("id") String bookId, Model model) {
+    public String requestBookById(@RequestParam("id") String bookId, Model model) {
         Book book = bookService.getBookById(bookId);
         model.addAttribute("book", book);
         return "book";
     }
 
     @GetMapping("/{category}")
-    public String requestBookbyCategory(@PathVariable("category") String category, Model model) {
+    public String requestBooksByCategory(@PathVariable("category")String category, Model model) {
         List<Book> booksByCategory = bookService.getAllBookListByCategory(category);
+        if(booksByCategory == null || booksByCategory.isEmpty()){
+            throw new CategoryException();
+        }
         model.addAttribute("bookList", booksByCategory);
         return "books";
     }
 
     @GetMapping("/filter/{bookFilter}")
-    public String requestBookbyFilter(@MatrixVariable(pathVar = "bookFilter")Map<String, List<String>> bookFilter, Model model) {
+    public String requestBooksByFilter(@MatrixVariable(pathVar = "bookFilter")Map<String, List<String>> bookFilter, Model model) {
         Set<Book> booksByFilter = bookService.getBookListByFilter(bookFilter);
         model.addAttribute("bookList", booksByFilter);
         return "books";
     }
+
     @GetMapping("/add")
-    public String requestAddBookForm(Model model){
+    public String requestAddBookForm(Model model) {
         model.addAttribute("book", new Book());
         return "addBook";
     }
+
     @PostMapping("/add")
-    public String requestSubmitNewBook(@Valid @ModelAttribute("book") Book book, BindingResult bindingResult){
+    public String requestSubmitNewBook(@Valid @ModelAttribute("book") Book book, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             return "addBook";
         }
         MultipartFile bookImage = book.getBookImage();
         String saveName = bookImage.getOriginalFilename();
         File saveFile = new File(fileDir + saveName);
-        if(bookImage != null && !bookImage.isEmpty()){
+        if(bookImage != null && !bookImage.isEmpty()) {
             try {
                 bookImage.transferTo(saveFile);
             } catch (IOException e) {
@@ -105,8 +111,8 @@ public class BookController {
     }
 
     @ModelAttribute
-    public void addAttributes(Model model){
-        model.addAttribute("addTitle", "신규도서등록");
+    public void addAttributes(Model model) {
+        model.addAttribute("addTitle", "신규 도서 등록");
     }
 
     @GetMapping("/download")
@@ -118,13 +124,23 @@ public class BookController {
         OutputStream os = response.getOutputStream();
         FileInputStream fis = new FileInputStream(imageFile);
         FileCopyUtils.copy(fis, os);
+        fis.close();
+        os.close();
     }
 
     @InitBinder
-    public void initBinder(WebDataBinder binder){
-//        binder.setValidator(unitsInStockValidator);
+    public void initBinder(WebDataBinder binder) {
         binder.setValidator(bookValidator);
-        binder.setAllowedFields("bookId","name","unitPrice","author","description","publisher",
-                                "category","unitsStock","releaseDate","condition","bookImage");
+        binder.setAllowedFields("bookId", "name", "unitPrice","author", "description", "publisher", "category", "unitsInStock", "releaseDate", "condition", "bookImage");
+    }
+
+    @ExceptionHandler(value = {BookIdException.class})
+    public ModelAndView handleException(HttpServletRequest request, BookIdException e) {
+        ModelAndView mav = new ModelAndView();
+        mav.addObject("invalidBookId", e.getBookId());
+        mav.addObject("exception", e.toString());
+        mav.addObject("url", request.getRequestURL()+"?"+request.getQueryString());
+        mav.setViewName("errorBook");
+        return mav;
     }
 }
